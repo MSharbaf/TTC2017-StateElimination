@@ -1,0 +1,34 @@
+<project default="GTG2RE">
+
+	<target name="loadModels">
+		<epsilon.emf.register file="metamodel/TransitionGraph.ecore"/>
+		
+		<!--Path to the input model is "model/task-main/leader3_2.xmi", 
+			you can change it for testing arbitarary input model-->
+		<epsilon.emf.loadModel name="input"
+                                       modelFile="model/task-main/leader3_2.xmi"
+                                       metamodelUri="http://transitiongraph/1.0"
+                                       read="true" store="false" />
+		
+		<epsilon.emf.loadModel name="output"
+                                       modelFile="model/Temp.xmi"
+                                       metamodelUri="http://transitiongraph/1.0"
+                                       read="false" store="true" />
+	</target>
+	
+	<target name="FSA2GTG" depends="loadModels">
+		<epsilon.etl src="script/MainTask.etl">
+			<model ref="input"/>
+			<model ref="output"/>
+		</epsilon.etl>
+	</target>
+
+	<!--Path to the output Equivalent Regulare Expression (a text file) 
+		is "model/RE_leader3_2.txt", you can change it-->
+	<target name="GTG2RE" depends="FSA2GTG">
+		<epsilon.egl src="script/GTG2RE.egl" target="model/RE_leader3_2.txt">
+			<model ref="output"/>
+		</epsilon.egl>
+	</target>
+    
+</project>

@@ -1,0 +1,85 @@
+pre{
+	Uniforming() ; 
+}
+
+rule TransitionGraph
+	transform S1: input!TransitionGraph
+	to S2: output!TransitionGraph{
+		S2.states ::= S1.states ;
+		S2.transitions ::= S1.transitions ; 
+}
+
+rule StateAddition
+	transform S1: input!State
+	to S2: output!State{
+		S2.id = S1.id ; 
+		S2.isFinal = S1.isFinal ; 
+		S2.isInitial = S1.isInitial ; 
+		
+		S2.incoming = S1.incoming.equivalent();
+		S2.outgoing = S1.outgoing.equivalent() ; 	
+}
+
+rule TransitionAddition
+	transform T1: input!Transition
+	to T2: output!Transition{
+		T2.label = T1.label ; 
+		T2.probability = T1.probability ;  
+}
+
+operation Uniforming()
+{
+	var TG = input!TransitionGraph.all().first() ; 
+	
+	var States = input!State.all().asSequence() ; 
+	var SS = States.select(st|st.isInitial==true);
+	if(SS.size()>1)
+	{
+		var NStart : new input!State ;
+		TG.states.add(NStart) ; 
+			 
+		NStart.id = -1 ; 
+		NStart.isFinal = false ;
+		NStart.isInitial = true ;
+		for(s in SS)
+		{
+			s.isInitial = false ;
+			
+			var tr : new input!Transition ; 
+			tr.label = " " ; 
+			tr.source = NStart ; 
+			tr.target = s ; 
+			tr.probability = (1/SS.size()).asReal() ; 
+			NStart.outgoing.add(tr) ;
+			s.incoming.add(tr);
+			
+			TG.transitions.add(tr) ;
+		}
+	}
+
+	var FS = States.select(st|st.isFinal==true);  
+	if(FS.size()>1)
+	{
+		var SFinish : new input!State ; 
+		TG.states.add(SFinish) ; 
+		
+		SFinish.id = States.size()+1 ; 
+		SFinish.isFinal = true ;
+		SFinish.isInitial = false ;
+		for(s in FS)
+		{
+			s.isFinal = false ;
+			
+			var tr : new input!Transition ; 
+			tr.label = " " ; 
+			tr.source = s ;  
+			tr.target = SFinish ; 
+			tr.probability = (1/FS.size()).asReal() ; 
+			SFinish.incoming.add(tr) ;
+			s.outgoing.add(tr);
+			
+			TG.transitions.add(tr) ;
+		}
+	}
+}
+

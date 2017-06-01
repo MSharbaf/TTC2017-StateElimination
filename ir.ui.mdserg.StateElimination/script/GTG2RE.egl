@@ -1,0 +1,5 @@
+[%
+  var sb := new Native("java.lang.StringBuilder");
+  sb.append(Transition.allInstances.selectOne
+  	(s|s.label.isDefined()).label) ; 
+%][%=sb.toString()%]

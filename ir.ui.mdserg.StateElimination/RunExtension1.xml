@@ -1,0 +1,28 @@
+<project default="FSA2Uniform">
+	
+	<target name="loadModels">
+		<epsilon.emf.register file="metamodel/TransitionGraph.ecore"/>
+		
+		<!--Path to the input model is "model/task-extension1/zeroconf-mulyipleISFS.xmi", 
+			you can change it for testing arbitarary input model-->
+		<epsilon.emf.loadModel name="input"
+                                       modelFile="model/task-extension1/zeroconf-mulyipleISFS.xmi"
+                                       metamodelUri="http://transitiongraph/1.0"
+                                       read="true" store="false" />
+		
+		<!--Path to the output Equivalent Regulare Expression is "model/Out-zeroconf-mulyipleISFS.xmi",
+			 you can change it-->
+		<epsilon.emf.loadModel name="output"
+                                       modelFile="model/Out-zeroconf-multipleIS.xmi"
+                                       metamodelUri="http://transitiongraph/1.0"
+                                       read="false" store="true" />
+	</target>
+	
+	<target name="FSA2Uniform" depends="loadModels">
+		<epsilon.etl src="script/Extension1.etl">
+			<model ref="input"/>
+			<model ref="output"/>
+		</epsilon.etl>
+	</target>
+	
+</project>

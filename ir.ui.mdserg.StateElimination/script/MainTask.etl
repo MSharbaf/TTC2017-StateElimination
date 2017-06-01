@@ -1,0 +1,223 @@
+pre{
+	var trans : new output!Transition ; 
+}
+
+rule TransitionGraph
+	transform S1: input!TransitionGraph
+	to S2: output!TransitionGraph{
+		S2.states ::= S1.states ;
+		S2.transitions.add(trans) ; 
+}
+
+rule StateAddition
+	transform S1: input!State
+	to S2: output!State{
+	guard : S1.isInitial or S1.isFinal
+	
+	S2.id = S1.id ; 
+	S2.isInitial = S1.isInitial ; 
+	S2.isFinal = S1.isFinal ;
+	 
+	if(S1.isInitial)
+	{
+		trans.source = S2 ;
+		S2.outgoing ::= trans ;  
+	}
+	if(S1.isFinal)
+	{
+		trans.target = S2 ; 
+		S2.incoming ::= trans ; 
+	}
+}
+
+operation OneStateElimination()
+{
+	var States = input!State.all().asSequence() ; 
+	var K = States.selectOne(st|st.isInitial==false and st.isFinal==false); 
+	
+	var SIncoming = K.incoming.asSequence() ; 
+	var SOutgoing = K.outgoing.asSequence() ; 
+	
+	//(kk)* Self loop
+	var lbl_SL : new String ;
+	lbl_SL = "" ; 
+	var flag_lbl_SL = false ; 
+	var SL_Tr = SIncoming.select(tr|tr.source==K and tr.target==K); 
+	while(SL_Tr.size() > 0)
+	{
+		var tr = SL_Tr.first() ; 
+		if(tr.label.isEmpty()==false)// empty transition
+		{
+			if(flag_lbl_SL==false){
+				lbl_SL += "(" ; 
+				flag_lbl_SL = true ;
+			}else
+				lbl_SL += "+" ; 
+			lbl_SL += tr.label ; 
+		}
+		delete tr ;
+		SIncoming.remove(tr) ;
+		SOutgoing.remove(tr) ; 
+		SL_Tr.remove(tr)  ;  
+	}
+	if(lbl_SL.isEmpty()==false)
+		lbl_SL += ")*" ; 
+	
+	//Determine all P and Q 
+	var P_St = SIncoming.source.asSequence(); 
+	var Q_St = SOutgoing.target.asSequence();  
+	while(P_St.size()>0)
+	{
+		var P = P_St.first() ; 
+		if(P.isDefined()) 
+		{
+			var count = 0 ; 
+			while(Q_St.size()>count)
+			{
+				var Q = Q_St.first() ;
+				if(Q.isDefined())
+				{
+					//PQ
+					var lbl_PQ : new String ;
+					lbl_PQ = "" ; 
+					var flag_lbl_PQ = false ; 
+					for(e in P.outgoing.select(tr|tr.target == Q))//empty transition
+					{
+						if(flag_lbl_PQ == true)
+							lbl_PQ += "+" ;
+						lbl_PQ += e.label ;
+						flag_lbl_PQ = true ; 
+						delete e ;  
+					}
+ 
+					//PKQ
+					var lbl_PKQ : new String ;
+					lbl_PKQ = "" ;
+					var flag_lbl_PKQ = false ; 
+					for(tp in P.outgoing.select(tr|tr.target == K))
+					{
+						for(tq in Q.incoming.select(tr|tr.source == K))
+						{
+							if(flag_lbl_PKQ == true)
+								lbl_PKQ += "+" ; 
+							lbl_PKQ += "(" + tp.label + ")" ; 
+							lbl_PKQ += lbl_SL  ; 
+							lbl_PKQ += "(" + tq.label + ")" ;
+							flag_lbl_PKQ = true ;   
+						}
+						delete tp ; 
+					}
+													
+					var lbl_Total : new String ; 
+					lbl_Total = lbl_PQ ;  
+					if(not lbl_Total.isEmpty() and not lbl_PKQ.isEmpty())
+						 lbl_Total += "+" ;
+					lbl_Total += lbl_PKQ ; 	
+					
+					var Tran : new input!Transition ; 
+					Tran.label = lbl_Total ; 
+					Tran.source = P ; 
+					Tran.target = Q ; 
+					P.outgoing.add(Tran) ; 
+					Q.incoming.add(Tran) ; 
+				}
+				count++ ; 
+			}
+		}
+		P_St.remove(P) ;
+	} 
+	delete K ; 
+}
+
+post{
+	while(input!State.all().size() > 2)
+		OneStateElimination() ;
+ 
+	for (t in input!Transition.all().select(tr|not tr.source.isDefined() or not tr.target.isDefined()))
+		delete t ; 
+	
+	var Start = input!State.all.selectOne(s|s.isInitial == true) ; 
+	var Finish = input!State.all.selectOne(s|s.isFinal == true) ; 
+	
+	//Start_SL
+	var lbl_SSL : new String ;
+	lbl_SSL = "" ; 
+	var flag_lbl_SSL = false ; 
+	for(t in Start.incoming.select(tr|tr.source==Start and tr.target==Start))
+	{
+		if(t.label.isEmpty()==false)// empty transition
+		{
+			if(flag_lbl_SSL==false){
+				lbl_SSL += "(" ; 
+				flag_lbl_SSL = true ;
+			}else
+				lbl_SSL += "+" ; 
+			lbl_SSL += t.label ; 
+		}
+		delete t ;
+	}
+	if(lbl_SSL.isEmpty()==false)
+	lbl_SSL += ")*" ; 
+	
+	//Finish_SL
+	var lbl_FSL : new String ;
+	lbl_FSL = "" ; 
+	var flag_lbl_FSL = false ; 
+	for(t in Finish.outgoing.select(tr|tr.source==Finish and tr.target==Finish))
+	{
+		if(t.label.isEmpty()==false)// empty transition
+		{
+			if(flag_lbl_FSL==true)
+				lbl_FSL += "+" ; 
+			lbl_FSL += t.label ; 
+			flag_lbl_FSL = true ;
+		}
+		delete t ;
+	}
+	
+	//Finish-Start-Finish loop
+	var lbl_FSF : new String ;
+	lbl_FSF = "" ;
+	var flag_lbl_FSF = false ;  
+	var lbl_SF : new String  ;
+	lbl_SF = "" ; 
+	var flag_lbl_SF = false ; 
+	for(tp in Start.outgoing.select(tr|tr.target == Finish))
+	{
+		for(tq in Start.incoming.select(tr|tr.source == Finish))
+		{
+			if(flag_lbl_FSF == true)
+				lbl_FSF += "+" ; 
+			lbl_FSF += tq.label ; 
+			lbl_FSF += lbl_SSL  ; 
+			lbl_FSF += tp.label ;
+			flag_lbl_FSF = true ;   
+		} 
+		// Start to Finish transition
+		if(flag_lbl_SF == true)
+			lbl_SF += "+" ;  
+		lbl_SF += tp.label ;
+		flag_lbl_SF = true ; 
+	}
+
+	var label = "" ;
+	label += lbl_SSL ;
+	if(not lbl_SF.isEmpty())  
+	{
+		label += "(" ;
+		label += lbl_SF ; 
+		label += ")" ;
+	}
+	if(not lbl_FSF.isEmpty() or not lbl_FSL.isEmpty()) 
+	{
+		label += "(" ;
+		label += lbl_FSF ; 
+		if(not lbl_FSF.isEmpty())
+			label += "+" ; 
+		label += lbl_FSL ;
+		label += ")*" ;
+	} 
+	
+	trans.label = label ;
+	label.println("Regular Experssion is: ") ; 
+}

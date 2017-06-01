@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="ASCII"?>
+<transitiongraph:TransitionGraph xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:transitiongraph="http://transitiongraph/1.0">
+  <states outgoing="//@transitions.0" isInitial="true"/>
+  <states id="25" incoming="//@transitions.0" isFinal="true"/>
+  <transitions label="((((s1)(s9))(s17))(s0)+(((s8)(s11))(s22))(s0))*((((s2)(s10))(s18))(s25)+(((s7)(s12))(s21))(s25)+(((s5)(s13))(s23))(s25)+(((s6)(s14))(s20))(s25)+(((s4)(s15))(s24))(s25)+(((s3)(s16))(s19))(s25))(s25)*" source="//@states.0" target="//@states.1"/>
+</transitiongraph:TransitionGraph>
